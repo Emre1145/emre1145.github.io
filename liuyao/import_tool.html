@@ -1,8 +1,10 @@
 <!DOCTYPE html>
 <!-- ================================================================
-     鴨鴨六爻 — 記錄轉檔小工具（表單 → JSON）
-     純前端、不連網、資料不外傳；可直接放上 GitHub Pages。
-     欄位對齊 App 匯入格式：主卦 變卦 占日 占時 占者 所問 記錄 標籤
+     鴨鴨六爻 — 記錄轉檔小工具（雙格式：日期時間 / 干支四柱）
+     純前端、不連網、資料不外傳。
+     格式1：主卦 變卦 占日 占時 占者 所問 記錄 標籤
+     格式2：主卦 變卦 年柱 月柱 日柱 時柱 占者 所問 記錄 標籤
+     ★ 此為給 lesia 檢視配色/互動的 mockup，之後由網站 repo 的 Claude Code 正式實作。
      ================================================================ -->
 <html lang="zh-Hant">
 <head>
@@ -16,12 +18,16 @@
     --paper:#EFE9DA; --card:#FAF6EC; --ink:#26231E; --ink-2:#5C574E;
     --seal:#9E3B2E; --line:#DDD3BF; --link:#8A3527;
     --field:#FFFCF4; --chip:#EFE1D2;
+    /* 五行色（淺色主題，已加深以確保在紙感底可辨） */
+    --el-wood:#4E9E68; --el-fire:#D2513F; --el-earth:#B07C32; --el-metal:#A8842A; --el-water:#3E7CB1;
   }
   @media (prefers-color-scheme: dark){
     :root{
       --paper:#17150F; --card:#201D16; --ink:#E7E0D0; --ink-2:#A69E8C;
       --seal:#D08A7C; --line:#322E24; --link:#E0A18F;
       --field:#1B1811; --chip:#2C2718;
+      /* 五行色（深色主題，用原亮版，接近 App 觀感） */
+      --el-wood:#6FBE85; --el-fire:#E66A5C; --el-earth:#CF9A52; --el-metal:#E6D88E; --el-water:#7FB2DD;
     }
   }
   *{box-sizing:border-box}
@@ -34,7 +40,7 @@
   .serif{font-family:"Kaiti TC","STKaiti","Songti TC","Noto Serif TC",serif}
   .wrap{max-width:720px; margin:0 auto; padding:2.4rem 1.2rem 3.5rem}
 
-  header{margin-bottom:1.6rem}
+  header{margin-bottom:1.4rem}
   .brand{display:flex; align-items:center; gap:.7rem; margin-bottom:1.2rem}
   .seal{
     display:inline-flex; align-items:center; justify-content:center;
@@ -53,20 +59,28 @@
   }
   .privacy-note b{color:var(--seal); font-weight:600}
 
-  .cards{margin-top:1.6rem; display:flex; flex-direction:column; gap:1rem}
+  /* 格式切換 */
+  .mode-wrap{margin-top:1.6rem}
+  .mode-label{font-size:.82rem; color:var(--ink-2); letter-spacing:.02em; margin-bottom:.5rem}
+  .mode-toggle{display:inline-flex; background:var(--card); border:1px solid var(--line);
+    border-radius:11px; padding:.25rem; gap:.25rem}
+  .mode-toggle button{
+    font-family:inherit; font-size:.95rem; cursor:pointer; border:none;
+    background:none; color:var(--ink-2); padding:.5rem 1.1rem; border-radius:8px;
+    letter-spacing:.03em;
+  }
+  .mode-toggle button.active{background:var(--seal); color:var(--paper); font-weight:500}
+  .mode-hint{margin-top:.5rem; font-size:.84rem; color:var(--ink-2); line-height:1.6}
+
+  .cards{margin-top:1.4rem; display:flex; flex-direction:column; gap:1rem}
   .card{
     background:var(--card); border:1px solid var(--line);
     border-radius:14px; padding:1.1rem 1.1rem 1.2rem;
   }
-  .card-head{
-    display:flex; align-items:center; justify-content:space-between;
-    margin-bottom:.9rem;
-  }
+  .card-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:.9rem}
   .card-title{font-weight:600; font-size:1.05rem; letter-spacing:.03em}
-  .del{
-    background:none; border:none; color:var(--ink-2); cursor:pointer;
-    font-size:.85rem; padding:.3rem .5rem; border-radius:8px;
-  }
+  .del{background:none; border:none; color:var(--ink-2); cursor:pointer;
+    font-size:.85rem; padding:.3rem .5rem; border-radius:8px}
   .del:hover{color:var(--seal); background:rgba(158,59,46,.08)}
 
   .grid{display:grid; grid-template-columns:1fr 1fr; gap:.8rem}
@@ -74,79 +88,73 @@
   .field.full{grid-column:1 / -1}
   label{font-size:.82rem; color:var(--ink-2); letter-spacing:.02em}
   label .req{color:var(--seal)}
+  label .sub{color:var(--ink-2); font-weight:400}
   input, textarea{
     font-family:inherit; font-size:1rem; color:var(--ink);
     background:var(--field); border:1px solid var(--line);
-    border-radius:9px; padding:.6rem .7rem; width:100%;
-    -webkit-appearance:none; appearance:none;
+    border-radius:9px; padding:.6rem .7rem; width:100%; -webkit-appearance:none; appearance:none;
   }
   input[type="date"], input[type="time"]{min-height:2.6rem}
   textarea{resize:vertical; min-height:2.6rem; line-height:1.6}
-  input:focus, textarea:focus{
-    outline:none; border-color:var(--seal);
-    box-shadow:0 0 0 3px rgba(158,59,46,.14);
-  }
+  input:focus, textarea:focus{outline:none; border-color:var(--seal); box-shadow:0 0 0 3px rgba(158,59,46,.14)}
   @media (prefers-color-scheme: dark){
     input:focus, textarea:focus{box-shadow:0 0 0 3px rgba(208,138,124,.18)}
   }
 
+  /* 干支四柱 */
+  .pillars{display:grid; grid-template-columns:repeat(4,1fr); gap:.6rem; margin-top:.1rem}
+  .pillar-card{
+    background:var(--field); border:1px solid var(--line); border-radius:12px;
+    padding:.6rem .4rem .5rem; text-align:center;
+  }
+  .pillar-card .plabel{font-size:.78rem; color:var(--ink-2); letter-spacing:.06em; margin-bottom:.4rem}
+  .pill-sel{
+    width:100%; text-align:center; text-align-last:center;
+    font-family:"Kaiti TC","STKaiti","Songti TC","Noto Serif TC",serif;
+    font-size:1.7rem; font-weight:600; line-height:1.2;
+    background:none; border:none; color:var(--ink-2);
+    -webkit-appearance:none; appearance:none; cursor:pointer; padding:.15rem 0;
+  }
+  .pill-sel:focus{outline:none}
+  .pill-sel.el-wood{color:var(--el-wood)}
+  .pill-sel.el-fire{color:var(--el-fire)}
+  .pill-sel.el-earth{color:var(--el-earth)}
+  .pill-sel.el-metal{color:var(--el-metal)}
+  .pill-sel.el-water{color:var(--el-water)}
+  .pill-div{height:1px; background:var(--line); margin:.15rem .5rem}
+
   /* 標籤 chips */
-  .tags{
-    display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;
-    background:var(--field); border:1px solid var(--line);
-    border-radius:9px; padding:.45rem .5rem; min-height:2.6rem;
-  }
-  .chip{
-    display:inline-flex; align-items:center; gap:.3rem;
-    background:var(--chip); color:var(--ink);
-    border-radius:7px; padding:.2rem .5rem; font-size:.9rem;
-  }
-  .chip button{
-    background:none; border:none; color:var(--ink-2); cursor:pointer;
-    font-size:1rem; line-height:1; padding:0;
-  }
+  .tags{display:flex; flex-wrap:wrap; gap:.4rem; align-items:center;
+    background:var(--field); border:1px solid var(--line); border-radius:9px;
+    padding:.45rem .5rem; min-height:2.6rem}
+  .chip{display:inline-flex; align-items:center; gap:.3rem; background:var(--chip);
+    color:var(--ink); border-radius:7px; padding:.2rem .5rem; font-size:.9rem}
+  .chip button{background:none; border:none; color:var(--ink-2); cursor:pointer; font-size:1rem; line-height:1; padding:0}
   .chip button:hover{color:var(--seal)}
-  .tags input{
-    border:none; background:none; box-shadow:none !important;
-    flex:1; min-width:6rem; padding:.2rem; min-height:auto;
-  }
+  .tags input{border:none; background:none; box-shadow:none !important; flex:1; min-width:6rem; padding:.2rem; min-height:auto}
   .tags input:focus{outline:none}
-  .tag-hint{font-size:.76rem; color:var(--ink-2); margin-top:-.1rem}
 
   .add-row{margin-top:1.1rem}
-  .btn{
-    font-family:inherit; font-size:.98rem; cursor:pointer;
-    border-radius:10px; padding:.7rem 1.1rem; border:1px solid var(--line);
-    background:var(--card); color:var(--ink); letter-spacing:.02em;
-  }
+  .btn{font-family:inherit; font-size:.98rem; cursor:pointer; border-radius:10px;
+    padding:.7rem 1.1rem; border:1px solid var(--line); background:var(--card); color:var(--ink); letter-spacing:.02em}
   .btn:hover{border-color:var(--seal); color:var(--seal)}
   .btn.block{width:100%; border-style:dashed; padding:.9rem}
-  .btn.primary{
-    background:var(--seal); color:var(--paper); border-color:var(--seal); font-weight:500;
-  }
+  .btn.primary{background:var(--seal); color:var(--paper); border-color:var(--seal); font-weight:500}
   .btn.primary:hover{filter:brightness(1.06); color:var(--paper)}
   .btn:disabled{opacity:.5; cursor:not-allowed}
 
   .output{margin-top:2rem}
-  h2{font-size:1.28rem; font-weight:600; letter-spacing:.03em;
-    margin:0 0 .3rem; padding-bottom:.4rem; border-bottom:1px solid var(--line)}
+  h2{font-size:1.28rem; font-weight:600; letter-spacing:.03em; margin:0 0 .3rem;
+    padding-bottom:.4rem; border-bottom:1px solid var(--line)}
   .out-hint{color:var(--ink-2); font-size:.9rem; margin:.5rem 0 .8rem}
-  textarea.preview{
-    width:100%; min-height:200px; font-size:.9rem; line-height:1.55;
+  textarea.preview{width:100%; min-height:200px; font-size:.9rem; line-height:1.55;
     font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
     background:var(--field); border:1px solid var(--line); border-radius:12px;
-    padding:.9rem 1rem; color:var(--ink); white-space:pre; overflow:auto;
-  }
+    padding:.9rem 1rem; color:var(--ink); white-space:pre; overflow:auto}
   .out-actions{display:flex; gap:.7rem; margin-top:.9rem; flex-wrap:wrap}
-  .toast{
-    font-size:.86rem; color:var(--seal); margin-top:.6rem;
-    min-height:1.2rem; letter-spacing:.02em;
-  }
+  .toast{font-size:.86rem; color:var(--seal); margin-top:.6rem; min-height:1.2rem; letter-spacing:.02em}
 
-  .how{
-    margin-top:2rem; padding:1.1rem 1.3rem; background:var(--card);
-    border:1px solid var(--line); border-radius:12px;
-  }
+  .how{margin-top:2rem; padding:1.1rem 1.3rem; background:var(--card); border:1px solid var(--line); border-radius:12px}
   .how h3{margin:0 0 .5rem; font-size:1.02rem; font-weight:600}
   .how ol{margin:.4rem 0 0; padding-left:1.3rem; color:var(--ink-2); font-size:.92rem}
   .how li{margin:.35rem 0}
@@ -157,6 +165,7 @@
 
   @media (max-width:520px){
     .grid{grid-template-columns:1fr}
+    .pillars{grid-template-columns:repeat(2,1fr); gap:.7rem}
     h1{font-size:1.6rem}
   }
 </style>
@@ -174,7 +183,16 @@
   </header>
 
   <main>
-    <div class="cards" id="cards"><!-- 記錄卡片由 JS 產生 --></div>
+    <div class="mode-wrap">
+      <div class="mode-label">起卦時間格式</div>
+      <div class="mode-toggle" id="modeToggle">
+        <button type="button" data-mode="date" class="active">日期時間</button>
+        <button type="button" data-mode="pillar">干支四柱</button>
+      </div>
+      <p class="mode-hint" id="modeHint"></p>
+    </div>
+
+    <div class="cards" id="cards"></div>
 
     <div class="add-row">
       <button class="btn block" id="addBtn" type="button">＋ 新增一筆記錄</button>
@@ -195,9 +213,9 @@
     <section class="how">
       <h3>怎麼用</h3>
       <ol>
-        <li>一筆記錄填一張卡片；同一次要匯入多筆，就按「新增一筆記錄」加卡片。</li>
-        <li><b>主卦</b>是必填（點欄位會跳出六十四卦清單可選，也可以自己打字）。若這一卦有動爻、變出另一個卦，就填<b>變卦</b>；沒有動爻可留空。</li>
-        <li>其餘欄位（占者、所問、日期時間、記錄、標籤）都是選填，有就填、方便日後查找。</li>
+        <li>上方先選「起卦時間格式」：<b>日期時間</b>＝你知道西曆年月日與時間，讓 App 換算干支；<b>干支四柱</b>＝你已經有現成的干支，直接填。</li>
+        <li>一筆記錄填一張卡片；要匯入多筆就按「新增一筆記錄」。</li>
+        <li><b>主卦</b>必填（點欄位會跳出六十四卦清單，也可自己打字）；有動爻才填<b>變卦</b>。</li>
         <li>填好 → 下載檔案 → 傳到手機 → 在 App 用「選擇檔案匯入」選它即可。</li>
       </ol>
     </section>
@@ -210,7 +228,6 @@
   </footer>
 </div>
 
-<!-- 六十四卦名（標準卦名，供 datalist 建議；可自行打字覆蓋） -->
 <datalist id="guaList">
   <option>乾為天</option><option>坤為地</option><option>水雷屯</option><option>山水蒙</option>
   <option>水天需</option><option>天水訟</option><option>地水師</option><option>水地比</option>
@@ -234,142 +251,187 @@
 (function(){
   "use strict";
 
-  // 每筆記錄的資料模型；欄位對齊 App 匯入範例
+  /* ---------- 干支資料 ---------- */
+  var TG = ["甲","乙","丙","丁","戊","己","庚","辛","壬","癸"];
+  var DZ = ["子","丑","寅","卯","辰","巳","午","未","申","酉","戌","亥"];
+  var TG_EL = {甲:"wood",乙:"wood",丙:"fire",丁:"fire",戊:"earth",己:"earth",庚:"metal",辛:"metal",壬:"water",癸:"water"};
+  var DZ_EL = {子:"water",丑:"earth",寅:"wood",卯:"wood",辰:"earth",巳:"fire",午:"fire",未:"earth",申:"metal",酉:"metal",戌:"earth",亥:"water"};
+  var DZ_YANG = ["子","寅","辰","午","申","戌"];
+  var DZ_YIN  = ["丑","卯","巳","未","酉","亥"];
+  function tgYang(g){ return TG.indexOf(g) % 2 === 0; }            // 甲丙戊庚壬
+  function dzForGan(g){ return g ? (tgYang(g) ? DZ_YANG : DZ_YIN) : DZ; }
+  function ganForZhi(z){ if(!z) return TG; var yang = DZ_YANG.indexOf(z)!==-1;
+    return TG.filter(function(g){ return tgYang(g)===yang; }); }
+
+  var PILLARS = ["年","月","日","時"];
+
+  /* ---------- 狀態 ---------- */
   var records = [];
   var seq = 0;
+  var mode = "date"; // 'date' | 'pillar'
 
-  var cardsEl    = document.getElementById("cards");
-  var previewEl  = document.getElementById("preview");
-  var toastEl    = document.getElementById("toast");
+  var cardsEl   = document.getElementById("cards");
+  var previewEl = document.getElementById("preview");
+  var toastEl   = document.getElementById("toast");
+  var hintEl    = document.getElementById("modeHint");
+
+  var HINTS = {
+    date:   "你知道起卦的西曆年月日與時間，讓 App 自動換算干支。",
+    pillar: "你已經有現成的干支四柱（舊記錄、紙本、其他排盤），直接填入；地支會依天干陰陽自動過濾出合法組合。"
+  };
 
   function makeRecord(){
-    return { _id: ++seq, 主卦:"", 變卦:"", 占者:"", 所問:"",
-             占日:"", 占時:"", 記錄:"", 標籤:[] };
+    return { _id:++seq, 主卦:"", 變卦:"", 占者:"", 所問:"", 占日:"", 占時:"", 記錄:"", 標籤:[],
+      柱:{ 年:{g:"",z:""}, 月:{g:"",z:""}, 日:{g:"",z:""}, 時:{g:"",z:""} } };
   }
 
-  function field(labelHTML, node){
-    var wrap = document.createElement("div");
-    wrap.className = "field";
-    var lab = document.createElement("label");
-    lab.innerHTML = labelHTML;
+  /* ---------- 小工具 ---------- */
+  function el(tag, cls){ var n=document.createElement(tag); if(cls) n.className=cls; return n; }
+  function field(labelHTML, node, full){
+    var wrap = el("div","field"+(full?" full":""));
+    var lab = el("label"); lab.innerHTML = labelHTML;
+    wrap.appendChild(lab); wrap.appendChild(node); return wrap;
+  }
+  function input(type, value, oninput){
+    var e = el("input"); e.type=type; e.value=value||"";
+    e.addEventListener("input", function(){ oninput(e.value); });
+    return e;
+  }
+  function guaInput(value, oninput){
+    var e = input("text", value, oninput);
+    e.setAttribute("list","guaList"); e.placeholder="點選或輸入卦名";
+    e.autocapitalize="off"; e.autocomplete="off"; return e;
+  }
+  function textarea(value, oninput, rows){
+    var e = el("textarea"); e.value=value||""; e.rows=rows||1;
+    e.addEventListener("input", function(){ oninput(e.value); });
+    return e;
+  }
+
+  /* ---------- 干支柱 ---------- */
+  function makeSelect(items, current, elMap){
+    var s = el("select","pill-sel");
+    var blank = el("option"); blank.value=""; blank.textContent="—"; s.appendChild(blank);
+    items.forEach(function(ch){
+      var o = el("option"); o.value=ch; o.textContent=ch;
+      if(ch===current) o.selected=true; s.appendChild(o);
+    });
+    colorSelect(s, current, elMap);
+    return s;
+  }
+  function colorSelect(s, ch, elMap){
+    s.classList.remove("el-wood","el-fire","el-earth","el-metal","el-water");
+    if(ch && elMap[ch]) s.classList.add("el-"+elMap[ch]);
+  }
+  function rebuildOptions(sel, items, keep, elMap){
+    var cur = keep && items.indexOf(keep)!==-1 ? keep : "";
+    sel.innerHTML = "";
+    var blank = el("option"); blank.value=""; blank.textContent="—"; sel.appendChild(blank);
+    items.forEach(function(ch){
+      var o=el("option"); o.value=ch; o.textContent=ch;
+      if(ch===cur) o.selected=true; sel.appendChild(o);
+    });
+    colorSelect(sel, cur, elMap);
+    return cur;
+  }
+
+  function pillarCard(rec, key){
+    var slot = rec.柱[key];
+    var card = el("div","pillar-card");
+    var plab = el("div","plabel"); plab.textContent = key+"柱"; card.appendChild(plab);
+
+    var ganSel = makeSelect(TG, slot.g, TG_EL);
+    var div = el("div","pill-div");
+    var zhiSel = makeSelect(dzForGan(slot.g), slot.z, DZ_EL);
+
+    ganSel.addEventListener("change", function(){
+      slot.g = ganSel.value; colorSelect(ganSel, slot.g, TG_EL);
+      slot.z = rebuildOptions(zhiSel, dzForGan(slot.g), slot.z, DZ_EL);
+      refresh();
+    });
+    zhiSel.addEventListener("change", function(){
+      slot.z = zhiSel.value; colorSelect(zhiSel, slot.z, DZ_EL);
+      slot.g = rebuildOptions(ganSel, ganForZhi(slot.z), slot.g, TG_EL);
+      // 天干變了，地支合法集合可能也要跟著（保持一致）
+      slot.z = rebuildOptions(zhiSel, dzForGan(slot.g), slot.z, DZ_EL);
+      refresh();
+    });
+
+    card.appendChild(ganSel); card.appendChild(div); card.appendChild(zhiSel);
+    return card;
+  }
+
+  function pillarBlock(rec){
+    var wrap = el("div","field full");
+    var lab = el("label"); lab.innerHTML = '干支四柱 <span class="sub">（天干＋地支，自動過濾合法組合；可留空）</span>';
     wrap.appendChild(lab);
-    wrap.appendChild(node);
+    var row = el("div","pillars");
+    PILLARS.forEach(function(k){ row.appendChild(pillarCard(rec,k)); });
+    wrap.appendChild(row);
     return wrap;
   }
 
-  function input(type, value, oninput){
-    var el = document.createElement("input");
-    el.type = type; el.value = value || "";
-    el.addEventListener("input", function(){ oninput(el.value); });
-    return el;
-  }
-
-  function guaInput(value, oninput){
-    var el = input("text", value, oninput);
-    el.setAttribute("list", "guaList");
-    el.placeholder = "點選或輸入卦名";
-    el.autocapitalize = "off"; el.autocomplete = "off";
-    return el;
-  }
-
-  function textarea(value, oninput, rows){
-    var el = document.createElement("textarea");
-    el.value = value || ""; el.rows = rows || 1;
-    el.addEventListener("input", function(){ oninput(el.value); });
-    return el;
-  }
-
-  // 標籤 chip 輸入（最多 3 個）
+  /* ---------- 標籤 ---------- */
   function tagField(rec){
-    var box = document.createElement("div");
-    box.className = "tags";
-    var inp = document.createElement("input");
-    inp.type = "text"; inp.placeholder = "輸入後按 Enter 或逗號";
-    inp.autocapitalize = "off"; inp.autocomplete = "off";
-
+    var box = el("div","tags");
+    var inp = el("input"); inp.type="text"; inp.placeholder="輸入後按 Enter 或逗號";
+    inp.autocapitalize="off"; inp.autocomplete="off";
     function renderChips(){
-      // 移除既有 chip，保留 input
       Array.prototype.slice.call(box.querySelectorAll(".chip")).forEach(function(c){ c.remove(); });
-      rec.標籤.forEach(function(tag, i){
-        var chip = document.createElement("span");
-        chip.className = "chip";
-        chip.appendChild(document.createTextNode(tag));
-        var x = document.createElement("button");
-        x.type = "button"; x.textContent = "×"; x.setAttribute("aria-label","移除標籤");
-        x.addEventListener("click", function(){
-          rec.標籤.splice(i,1); renderChips(); refresh();
-        });
-        chip.appendChild(x);
-        box.insertBefore(chip, inp);
+      rec.標籤.forEach(function(tag,i){
+        var chip=el("span","chip"); chip.appendChild(document.createTextNode(tag));
+        var x=el("button"); x.type="button"; x.textContent="×"; x.setAttribute("aria-label","移除標籤");
+        x.addEventListener("click", function(){ rec.標籤.splice(i,1); renderChips(); refresh(); });
+        chip.appendChild(x); box.insertBefore(chip, inp);
       });
-      var full = rec.標籤.length >= 3;
-      inp.style.display = full ? "none" : "";
+      inp.style.display = rec.標籤.length>=3 ? "none" : "";
     }
-
     function addTag(){
-      var v = inp.value.trim();
-      if(v && rec.標籤.length < 3 && rec.標籤.indexOf(v) === -1){
-        rec.標籤.push(v); inp.value = ""; renderChips(); refresh();
-      } else { inp.value = ""; }
+      var v=inp.value.trim();
+      if(v && rec.標籤.length<3 && rec.標籤.indexOf(v)===-1){ rec.標籤.push(v); inp.value=""; renderChips(); refresh(); }
+      else inp.value="";
     }
-
     inp.addEventListener("keydown", function(e){
-      if(e.key === "Enter" || e.key === ","){ e.preventDefault(); addTag(); }
-      else if(e.key === "Backspace" && inp.value === "" && rec.標籤.length){
-        rec.標籤.pop(); renderChips(); refresh();
-      }
+      if(e.key==="Enter"||e.key===","){ e.preventDefault(); addTag(); }
+      else if(e.key==="Backspace"&&inp.value===""&&rec.標籤.length){ rec.標籤.pop(); renderChips(); refresh(); }
     });
     inp.addEventListener("blur", addTag);
-
-    box.appendChild(inp);
-    renderChips();
-    return box;
+    box.appendChild(inp); renderChips(); return box;
   }
 
+  /* ---------- 卡片 ---------- */
   function buildCard(rec){
-    var card = document.createElement("div");
-    card.className = "card";
-    card.dataset.id = rec._id;
-
-    var head = document.createElement("div");
-    head.className = "card-head";
-    var title = document.createElement("span");
-    title.className = "card-title"; // 編號於 renumber() 填入
-    var del = document.createElement("button");
-    del.className = "del"; del.type = "button"; del.textContent = "刪除";
+    var card = el("div","card"); card.dataset.id = rec._id;
+    var head = el("div","card-head");
+    var title = el("span","card-title");
+    var del = el("button","del"); del.type="button"; del.textContent="刪除";
     del.addEventListener("click", function(){ removeRecord(rec._id); });
-    head.appendChild(title); head.appendChild(del);
-    card.appendChild(head);
+    head.appendChild(title); head.appendChild(del); card.appendChild(head);
 
-    var grid = document.createElement("div");
-    grid.className = "grid";
-
+    var grid = el("div","grid");
     grid.appendChild(field('主卦 <span class="req">＊</span>',
-      guaInput(rec.主卦, function(v){ rec.主卦 = v; refresh(); })));
-    grid.appendChild(field('變卦 <span style="color:var(--ink-2)">（有動爻才填）</span>',
-      guaInput(rec.變卦, function(v){ rec.變卦 = v; refresh(); })));
-
+      guaInput(rec.主卦, function(v){ rec.主卦=v; refresh(); })));
+    grid.appendChild(field('變卦 <span class="sub">（有動爻才填）</span>',
+      guaInput(rec.變卦, function(v){ rec.變卦=v; refresh(); })));
     grid.appendChild(field("占者",
-      input("text", rec.占者, function(v){ rec.占者 = v; refresh(); })));
-    var qEl = textarea(rec.所問, function(v){ rec.所問 = v; refresh(); }, 1);
-    grid.appendChild(field("所問", qEl));
+      input("text", rec.占者, function(v){ rec.占者=v; refresh(); })));
+    grid.appendChild(field("所問",
+      textarea(rec.所問, function(v){ rec.所問=v; refresh(); }, 1)));
 
-    grid.appendChild(field("占日",
-      input("date", rec.占日, function(v){ rec.占日 = v; refresh(); })));
-    grid.appendChild(field("占時",
-      input("time", rec.占時, function(v){ rec.占時 = v; refresh(); })));
+    // 時間區塊（依格式）
+    if(mode==="date"){
+      grid.appendChild(field("占日", input("date", rec.占日, function(v){ rec.占日=v; refresh(); })));
+      grid.appendChild(field("占時", input("time", rec.占時, function(v){ rec.占時=v; refresh(); })));
+    } else {
+      grid.appendChild(pillarBlock(rec));
+    }
 
-    var noteWrap = field("記錄 / 筆記",
-      textarea(rec.記錄, function(v){ rec.記錄 = v; refresh(); }, 2));
-    noteWrap.classList.add("full");
-    grid.appendChild(noteWrap);
+    grid.appendChild(field("記錄 / 筆記",
+      textarea(rec.記錄, function(v){ rec.記錄=v; refresh(); }, 2), true));
 
-    var tagWrap = document.createElement("div");
-    tagWrap.className = "field full";
-    var tagLab = document.createElement("label");
-    tagLab.innerHTML = '標籤 <span style="color:var(--ink-2)">（選填，最多 3 個）</span>';
-    tagWrap.appendChild(tagLab);
-    tagWrap.appendChild(tagField(rec));
+    var tagWrap = el("div","field full");
+    var tl = el("label"); tl.innerHTML = '標籤 <span class="sub">（選填，最多 3 個）</span>';
+    tagWrap.appendChild(tl); tagWrap.appendChild(tagField(rec));
     grid.appendChild(tagWrap);
 
     card.appendChild(grid);
@@ -378,43 +440,76 @@
 
   function renumber(){
     var cards = cardsEl.querySelectorAll(".card");
-    for(var i=0;i<cards.length;i++){
-      cards[i].querySelector(".card-title").textContent = "記錄 " + (i+1);
-    }
+    for(var i=0;i<cards.length;i++) cards[i].querySelector(".card-title").textContent = "記錄 "+(i+1);
   }
-
+  function renderAll(){
+    cardsEl.innerHTML = "";
+    records.forEach(function(r){ cardsEl.appendChild(buildCard(r)); });
+    renumber();
+  }
   function addRecord(){
-    var rec = makeRecord();
-    records.push(rec);
-    cardsEl.appendChild(buildCard(rec));
-    renumber(); refresh();
+    var r = makeRecord(); records.push(r);
+    cardsEl.appendChild(buildCard(r)); renumber(); refresh();
   }
-
   function removeRecord(id){
-    records = records.filter(function(r){ return r._id !== id; });
-    var node = cardsEl.querySelector('.card[data-id="'+id+'"]');
-    if(node) node.remove();
-    if(records.length === 0) addRecord();
+    records = records.filter(function(r){ return r._id!==id; });
+    var n = cardsEl.querySelector('.card[data-id="'+id+'"]'); if(n) n.remove();
+    if(records.length===0) addRecord();
     renumber(); refresh();
   }
 
-  // 依 App 範例的鍵順序輸出；空欄位省略
+  /* ---------- 格式切換 ---------- */
+  function timeHasData(m){
+    return records.some(function(r){
+      if(m==="date") return r.占日||r.占時;
+      return PILLARS.some(function(k){ return r.柱[k].g||r.柱[k].z; });
+    });
+  }
+  function clearTime(m){
+    records.forEach(function(r){
+      if(m==="date"){ r.占日=""; r.占時=""; }
+      else PILLARS.forEach(function(k){ r.柱[k]={g:"",z:""}; });
+    });
+  }
+  function setMode(m){
+    if(m===mode) return;
+    if(timeHasData(mode) &&
+       !confirm("切換格式會清除已填的時間欄位（主卦、占者等其餘內容會保留），要繼續嗎？")){
+      syncButtons(); return;
+    }
+    clearTime(mode);
+    mode = m; syncButtons(); renderAll(); refresh();
+  }
+  function syncButtons(){
+    Array.prototype.slice.call(document.querySelectorAll("#modeToggle button")).forEach(function(b){
+      b.classList.toggle("active", b.dataset.mode===mode);
+    });
+    hintEl.textContent = HINTS[mode];
+  }
+
+  /* ---------- 輸出 ---------- */
   function toJSON(){
     var out = records.map(function(r){
       var o = {};
       if(r.主卦) o.主卦 = r.主卦;
       if(r.變卦) o.變卦 = r.變卦;
-      if(r.占日) o.占日 = r.占日.replace(/-/g, ""); // 2026-07-03 → 20260703
-      if(r.占時) o.占時 = r.占時;                    // 13:15
+      if(mode==="date"){
+        if(r.占日) o.占日 = r.占日.replace(/-/g,"");
+        if(r.占時) o.占時 = r.占時;
+      } else {
+        PILLARS.forEach(function(k){
+          var s = r.柱[k];
+          if(s.g && s.z) o[k+"柱"] = s.g + s.z;
+        });
+      }
       if(r.占者) o.占者 = r.占者;
       if(r.所問) o.所問 = r.所問;
       if(r.記錄) o.記錄 = r.記錄;
       if(r.標籤 && r.標籤.length) o.標籤 = r.標籤.slice();
       return o;
-    }).filter(function(o){ return Object.keys(o).length > 0; });
+    }).filter(function(o){ return Object.keys(o).length>0; });
     return JSON.stringify(out, null, 2);
   }
-
   function refresh(){
     previewEl.value = toJSON();
     var hasGua = records.some(function(r){ return r.主卦; });
@@ -423,49 +518,40 @@
   }
 
   var toastTimer;
-  function toast(msg){
-    toastEl.textContent = msg;
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(function(){ toastEl.textContent = ""; }, 2600);
-  }
+  function toast(msg){ toastEl.textContent=msg; clearTimeout(toastTimer);
+    toastTimer=setTimeout(function(){ toastEl.textContent=""; },2600); }
 
-  // 下載
+  /* ---------- 事件 ---------- */
+  document.getElementById("modeToggle").addEventListener("click", function(e){
+    var b = e.target.closest("button"); if(b) setMode(b.dataset.mode);
+  });
+  document.getElementById("addBtn").addEventListener("click", addRecord);
   document.getElementById("downloadBtn").addEventListener("click", function(){
-    var d = new Date();
-    var pad = function(n){ return (n<10?"0":"")+n; };
-    var stamp = "" + d.getFullYear() + pad(d.getMonth()+1) + pad(d.getDate());
-    var blob = new Blob([toJSON()], {type:"application/json;charset=utf-8"});
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url; a.download = "鴨鴨六爻_記錄_" + stamp + ".json";
+    var d=new Date(), p=function(n){return(n<10?"0":"")+n;};
+    var stamp=""+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate());
+    var blob=new Blob([toJSON()],{type:"application/json;charset=utf-8"});
+    var url=URL.createObjectURL(blob), a=el("a");
+    a.href=url; a.download="鴨鴨六爻_記錄_"+stamp+".json";
     document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){ URL.revokeObjectURL(url); }, 1000);
+    setTimeout(function(){ URL.revokeObjectURL(url); },1000);
     toast("已下載檔案，傳到手機後用 App 匯入即可。");
   });
-
-  // 複製
   document.getElementById("copyBtn").addEventListener("click", function(){
-    var text = toJSON();
-    function fallback(){
-      previewEl.focus(); previewEl.select();
-      try { document.execCommand("copy"); toast("已複製到剪貼簿。"); }
-      catch(e){ toast("複製失敗，請手動選取上方文字複製。"); }
-    }
-    if(navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(text).then(function(){ toast("已複製到剪貼簿。"); }, fallback);
-    } else { fallback(); }
+    var text=toJSON();
+    function fb(){ previewEl.focus(); previewEl.select();
+      try{ document.execCommand("copy"); toast("已複製到剪貼簿。"); }
+      catch(e){ toast("複製失敗，請手動選取上方文字複製。"); } }
+    if(navigator.clipboard&&navigator.clipboard.writeText)
+      navigator.clipboard.writeText(text).then(function(){ toast("已複製到剪貼簿。"); }, fb);
+    else fb();
   });
-
-  // 清空
   document.getElementById("clearBtn").addEventListener("click", function(){
     if(!confirm("確定要清空所有記錄嗎？此動作無法復原。")) return;
-    records = []; cardsEl.innerHTML = "";
-    addRecord(); toast("已清空。");
+    records=[]; cardsEl.innerHTML=""; addRecord(); toast("已清空。");
   });
 
-  document.getElementById("addBtn").addEventListener("click", addRecord);
-
-  // 起始一張空卡
+  /* ---------- 啟動 ---------- */
+  syncButtons();
   addRecord();
 })();
 </script>
